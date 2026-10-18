@@ -1,0 +1,10 @@
+{
+  "name": "Remix PersonaFlow",
+  "description": "Interactive 3D avatar companion with voice and text chat, memory, and deep customization for an immersive roleplay experience.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
