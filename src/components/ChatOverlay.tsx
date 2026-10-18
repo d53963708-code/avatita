@@ -11,7 +11,6 @@ import {
   Heart,
   Sparkles,
   Camera,
-  Play,
   RotateCcw,
   Sliders,
   Brain,
@@ -22,11 +21,9 @@ import {
   Cpu,
   PanelLeftOpen,
   MessageSquare,
-  Activity,
-  Gauge,
   Radio,
 } from 'lucide-react';
-import { AnimationType, CharacterProfile, ChatMessage, EmotionType } from '../types/character';
+import { CharacterProfile, ChatMessage, EmotionType } from '../types/character';
 import { MemoryManager } from '../services/memoryManager';
 import { DrawerTabType } from './ConfigurationDrawer';
 
@@ -35,14 +32,11 @@ interface ChatOverlayProps {
   characters: CharacterProfile[];
   messages: ChatMessage[];
   intimacyLevel: number;
-  activeAnimation: AnimationType;
   activeEmotion: EmotionType;
   isSpeaking: boolean;
   isThinking?: boolean;
   cameraPreset: 'face' | 'bust' | 'full' | 'orbit';
-  loadedAnimations?: string[];
   onSendMessage: (text: string, imageBase64?: string) => void;
-  onAnimationTrigger: (anim: AnimationType) => void;
   onCameraChange: (preset: 'face' | 'bust' | 'full' | 'orbit') => void;
   onOpenCustomizer: () => void;
   onOpenMemory: () => void;
@@ -61,14 +55,11 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
   characters,
   messages,
   intimacyLevel,
-  activeAnimation,
   activeEmotion,
   isSpeaking,
   isThinking = false,
   cameraPreset,
-  loadedAnimations = [],
   onSendMessage,
-  onAnimationTrigger,
   onCameraChange,
   onOpenCustomizer,
   onOpenMemory,
@@ -84,7 +75,6 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isZenMode, setIsZenMode] = useState(false);
-  // Auto-hiding bottom dock: only opens when user taps or focuses on the bottom section
   const [isBottomActive, setIsBottomActive] = useState<boolean>(false);
   const [isChatExpanded, setIsChatExpanded] = useState<boolean>(false);
   const [isCharacterMenuOpen, setIsCharacterMenuOpen] = useState(false);
@@ -99,14 +89,12 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
 
   const intimacyTitle = MemoryManager.getIntimacyTitle(intimacyLevel);
 
-  // Auto-scroll chat to bottom
   useEffect(() => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
   }, [messages, isChatExpanded]);
 
-  // Escape key to minimize bottom dock and liberate 3D view
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -119,7 +107,6 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Web Speech API Voice Recognition setup
   useEffect(() => {
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -174,7 +161,6 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
     setSelectedImage(null);
     setIsChatExpanded(true);
 
-    // On mobile devices, tuck bottom dock away so the avatar's reaction animation is fully visible
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setIsBottomActive(false);
     }
@@ -190,18 +176,6 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
     };
     reader.readAsDataURL(file);
   };
-
-  const animationsList: { id: AnimationType; label: string }[] = [
-    { id: 'idle', label: 'Reposo' },
-    { id: 'flirt', label: 'Coqueteo' },
-    { id: 'tease', label: 'Provocación' },
-    { id: 'whisper', label: 'Susurro' },
-    { id: 'sensual_sway', label: 'Vaivén' },
-    { id: 'kiss_wink', label: 'Beso' },
-    { id: 'dance', label: 'Danza' },
-    { id: 'laugh', label: 'Risa' },
-    { id: 'proud', label: 'Diosa' },
-  ];
 
   if (isZenMode) {
     return (
@@ -221,7 +195,6 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
           </button>
         </div>
 
-        {/* Small bottom prompt */}
         <div className="w-full flex justify-center pointer-events-auto pb-4">
           <button
             onClick={() => setIsZenMode(false)}
@@ -266,21 +239,17 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
 
   return (
     <div className="absolute inset-0 pointer-events-none flex flex-col justify-between p-4 sm:p-6 z-20 font-['Inter',sans-serif]">
-      {/* Discreet Perimeter Header - Giant name removed so avatar is 100% visible */}
       <header className="flex justify-between items-start w-full pointer-events-auto gap-3">
-        {/* Left Side: Minimal Discreet Menu & Avatar Switcher */}
         <div className="flex items-center gap-2">
-          {/* Menú Sidebar Toggle */}
           <button
             onClick={() => onOpenDrawer?.('customizer')}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 hover:bg-black/90 border border-white/15 hover:border-[#E63946] text-[#F8F7F4] text-xs font-['Space_Mono',monospace] transition active:scale-95 shadow-md backdrop-blur-md cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 hover:bg-black/90 border border-white/15 hover:border-[#E63946] text-[#F8F7F4] text-xs font-['Space_Mono',monospace] transition"
             title="Abrir Menú de Ajustes"
           >
             <PanelLeftOpen className="w-3.5 h-3.5 text-[#E63946]" />
             <span className="font-bold tracking-wider">[MENÚ]</span>
           </button>
 
-          {/* Selector de Avatar */}
           <div className="relative">
             <button
               onClick={() => setIsCharacterMenuOpen(!isCharacterMenuOpen)}
@@ -291,7 +260,6 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
               <ChevronDown className="w-3 h-3 text-[#F8F7F4]/50" />
             </button>
 
-            {/* Character Dropdown */}
             {isCharacterMenuOpen && (
               <div className="absolute top-full left-0 mt-2 w-60 rounded-xl bg-[#111113]/98 border border-white/15 shadow-2xl p-2 z-50 animate-in fade-in space-y-1 backdrop-blur-xl">
                 <div className="px-2 py-1 text-[10px] font-['Space_Mono',monospace] text-[#F8F7F4]/50 uppercase tracking-wider">
@@ -322,9 +290,7 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
           </div>
         </div>
 
-        {/* Right side: Status and technical action row in 100% Spanish */}
         <div className="text-right flex flex-col items-end gap-1">
-          {/* Dynamic Status text in Spanish */}
           {isSpeaking ? (
             <button
               type="button"
@@ -349,9 +315,7 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
             </div>
           )}
 
-          {/* Quick Technical Actions in Spanish */}
           <div className="flex items-center gap-1 mt-1 text-[11px] font-['Space_Mono',monospace]">
-            {/* Background Selector Modal Toggle */}
             <div className="relative">
               <button
                 onClick={() => setIsBackgroundMenuOpen(!isBackgroundMenuOpen)}
@@ -367,7 +331,6 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
                     [Ajustes de Fondo]
                   </div>
 
-                  {/* Preset list */}
                   <div className="space-y-1">
                     {roomPresets.map((r) => (
                       <button
@@ -388,7 +351,6 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
                     ))}
                   </div>
 
-                  {/* Upload custom photo */}
                   <div className="pt-2 border-t border-white/10">
                     <button
                       type="button"
@@ -409,13 +371,6 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
               )}
             </div>
 
-            <button
-              onClick={() => onOpenDrawer?.('animation_studio')}
-              className="px-2 py-1 rounded bg-black/60 border border-white/10 hover:border-white/20 text-[#F8F7F4]/80 hover:text-white transition"
-              title="Estudio de Animación"
-            >
-              [ANIM]
-            </button>
             <button
               onClick={() => onOpenDrawer?.('model3d')}
               className="px-2 py-1 rounded bg-black/60 border border-white/10 hover:border-white/20 text-[#F8F7F4]/80 hover:text-white transition"
@@ -445,7 +400,6 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
         </div>
       </header>
 
-      {/* Meta Bar (Bottom-Left) in Spanish */}
       <div className="meta-bar absolute bottom-6 left-6 pointer-events-auto flex items-end gap-6 z-20">
         <div
           className="meta-item flex flex-col cursor-pointer group"
@@ -474,7 +428,6 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
         </div>
       </div>
 
-      {/* Auto-Hiding Bottom Trigger: Completely INVISIBLE until touched or swiped */}
       {!isBottomActive ? (
         <div
           className="w-full max-w-lg mx-auto h-16 pointer-events-auto flex items-end justify-center pb-2 cursor-pointer transition-all duration-300 group"
@@ -492,13 +445,10 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
           }}
           title="Desliza o toca aquí para abrir el chat"
         >
-          {/* Subtle gesture pill line, transparent and unobtrusive */}
           <div className="w-20 h-1 rounded-full bg-white/10 group-hover:bg-[#E63946] transition-colors" />
         </div>
       ) : (
-        /* Full Expanded Bottom Control Dock */
         <div className="w-full max-w-3xl mx-auto pointer-events-auto space-y-2 animate-in slide-in-from-bottom duration-200">
-          {/* Collapsible Chat Log Drawer */}
           {isChatExpanded && (
             <div className="w-full rounded-2xl bg-[#111113]/95 border border-[rgba(255,255,255,0.12)] shadow-2xl overflow-hidden backdrop-blur-xl">
               <div className="flex items-center justify-between px-4 py-2 border-b border-[rgba(255,255,255,0.08)] bg-white/[0.02] text-xs text-[#F8F7F4]/60 font-['Space_Mono',monospace]">
@@ -556,11 +506,8 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
             </div>
           )}
 
-          {/* Dock Bar with Input, Controls, Camera & Motions */}
           <div className="rounded-2xl bg-[#111113]/95 border border-[rgba(255,255,255,0.12)] shadow-2xl p-2.5 sm:p-3 backdrop-blur-xl space-y-2">
-            {/* Quick Toolbar: Animations & Camera presets */}
             <div className="flex items-center justify-between gap-2 overflow-x-auto scrollbar-none pb-1 text-xs">
-              {/* Camera Presets */}
               <div className="flex items-center gap-1 bg-white/[0.03] p-1 rounded-xl border border-[rgba(255,255,255,0.08)] shrink-0 font-['Space_Mono',monospace] text-[11px]">
                 <Camera className="w-3.5 h-3.5 text-[#F8F7F4]/50 ml-1.5" />
                 {[
@@ -583,49 +530,6 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
                 ))}
               </div>
 
-              {/* Quick Motion triggers */}
-              <div className="flex items-center gap-1 overflow-x-auto scrollbar-none shrink-0 text-[11px] font-['Space_Mono',monospace]">
-                {loadedAnimations && loadedAnimations.length > 0 ? (
-                  <>
-                    <span className="text-[10px] uppercase text-[#E63946] px-1 whitespace-nowrap">
-                      [3D CLIPS]:
-                    </span>
-                    {loadedAnimations.map((clipName) => (
-                      <button
-                        key={clipName}
-                        type="button"
-                        onClick={() => onAnimationTrigger(clipName)}
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded transition whitespace-nowrap text-[11px] ${
-                          activeAnimation === clipName
-                            ? 'bg-[#E63946] text-white font-semibold'
-                            : 'bg-white/[0.04] text-[#F8F7F4]/70 border border-white/10 hover:border-white/30'
-                        }`}
-                        title={`Reproducir animación ${clipName}`}
-                      >
-                        <Play className="w-2.5 h-2.5 fill-current" />
-                        <span>{clipName}</span>
-                      </button>
-                    ))}
-                  </>
-                ) : (
-                  animationsList.map((a) => (
-                    <button
-                      key={a.id}
-                      type="button"
-                      onClick={() => onAnimationTrigger(a.id)}
-                      className={`px-2 py-1 rounded transition whitespace-nowrap uppercase ${
-                        activeAnimation === a.id
-                          ? 'bg-[#E63946] text-white font-semibold'
-                          : 'bg-white/[0.04] text-[#F8F7F4]/60 hover:text-white'
-                      }`}
-                    >
-                      {a.label}
-                    </button>
-                  ))
-                )}
-              </div>
-
-              {/* Expand / Collapse Chat Log Toggle */}
               <button
                 type="button"
                 onClick={() => setIsChatExpanded(!isChatExpanded)}
@@ -635,19 +539,17 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
                 {isChatExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
               </button>
 
-              {/* Minimize dock completely to leave main 3D view clean */}
               <button
                 type="button"
                 onClick={() => setIsBottomActive(false)}
                 className="flex items-center gap-1 px-2 py-1 rounded bg-white/[0.04] border border-white/10 hover:bg-white/10 text-[#F8F7F4]/80 text-xs shrink-0 transition font-['Space_Mono',monospace]"
-                title="Ocultar sección inferior (liberar pantalla 3D)"
+                title="Ocultar sección inferior (liberar pantalla)"
               >
                 <ChevronDown className="w-3.5 h-3.5 text-[#E63946]" />
                 <span className="hidden sm:inline">[HIDE]</span>
               </button>
             </div>
 
-            {/* Image preview chip if attached */}
             {selectedImage && (
               <div className="flex items-center gap-2 p-1.5 rounded-xl bg-black/60 border border-[#E63946]/40">
                 <img src={selectedImage} alt="preview" className="w-10 h-10 object-cover rounded-lg" />
@@ -664,9 +566,7 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
               </div>
             )}
 
-            {/* Chat / Voice Input Bar */}
             <form onSubmit={handleSend} className="flex items-center gap-2">
-              {/* Image upload button */}
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -683,7 +583,6 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
                 onChange={handleImageSelect}
               />
 
-              {/* Voice microphone button */}
               <button
                 type="button"
                 onClick={toggleListening}
@@ -697,7 +596,6 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
                 {isListening ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
               </button>
 
-              {/* Text Input with autofocus on click */}
               <input
                 ref={textInputRef}
                 type="text"
@@ -705,10 +603,9 @@ export const ChatOverlay: React.FC<ChatOverlayProps> = ({
                 onChange={(e) => setInputText(e.target.value)}
                 onFocus={() => setIsBottomActive(true)}
                 placeholder={isListening ? 'Habla ahora, te estoy escuchando...' : `Susúrrale o háblale a ${character.name}...`}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-black/40 border border-[rgba(255,255,255,0.1)] text-[#F8F7F4] text-xs sm:text-sm placeholder:text-[#F8F7F4]/30 focus:outline-none focus:border-[#E63946]/80 transition font-['Inter',sans-serif]"
+                className="flex-1 px-4 py-2.5 rounded-xl bg-black/40 border border-[rgba(255,255,255,0.1)] text-[#F8F7F4] text-xs sm:text-sm placeholder:text-[#F8F7F4]/30 focus:outline-none focus:border-[#E63946]"
               />
 
-              {/* Send CTA */}
               <button
                 type="submit"
                 disabled={!inputText.trim() && !selectedImage}
