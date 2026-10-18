@@ -1,8 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { CHARACTERS } from './data/characters';
 import {
-  AIProviderConfig,
-  AnimationType,
   CharacterProfile,
   ChatMessage,
   CustomizationSettings,
@@ -10,14 +8,8 @@ import {
   HardwareConfig,
   MemoryItem,
   ModelTransformConfig,
-  MorphTargetItem,
   PerformanceProfileConfig,
 } from './types/character';
-import {
-  AnimationClassifier,
-  AnimationSlotMapping,
-  RecognizedAnimation,
-} from './services/animationClassifier';
 import { MemoryManager } from './services/memoryManager';
 import { ApiClient } from './services/apiClient';
 import { Character3DScene } from './components/ThreeCanvas/Character3DScene';
@@ -56,8 +48,7 @@ export default function App() {
     return MemoryManager.getIntimacy(CHARACTERS[0].id);
   });
 
-  // 3D Scene states
-  const [activeAnimation, setActiveAnimation] = useState<AnimationType>('idle');
+  // La escena es estática: se cargan modelos/imagen pero no se reproduce animación 3D.
   const [activeEmotion, setActiveEmotion] = useState<EmotionType>('seductive');
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const [isThinking, setIsThinking] = useState<boolean>(false);
@@ -65,44 +56,10 @@ export default function App() {
     return typeof window !== 'undefined' && window.innerWidth < 768 ? 'full' : 'bust';
   });
 
-  // Custom 3D Model & Animation Recognition
   const [customModelFile, setCustomModelFile] = useState<File | null>(null);
   const [customModelInfo, setCustomModelInfo] = useState<{ name: string; animations: string[] } | null>(null);
-  const [recognizedAnimations, setRecognizedAnimations] = useState<RecognizedAnimation[]>([]);
-  const [detectedMorphs, setDetectedMorphs] = useState<MorphTargetItem[]>([]);
+  const [detectedMorphs, setDetectedMorphs] = useState<any[]>([]);
 
-  // Animation Slot Mapping & Playback Config
-  const [animationSlotMapping, setAnimationSlotMapping] = useState<AnimationSlotMapping>(() => {
-    try {
-      const saved = localStorage.getItem('andyvr_slot_mapping');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    return {
-      idle: '',
-      speaking: '',
-      laugh: '',
-      flirt: '',
-      dance: '',
-    };
-  });
-
-  const [playbackSpeed, setPlaybackSpeed] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('andyvr_anim_speed');
-      if (saved) return parseFloat(saved);
-    } catch (e) {}
-    return 1.0;
-  });
-
-  const [crossFadeDuration, setCrossFadeDuration] = useState<number>(() => {
-    try {
-      const saved = localStorage.getItem('andyvr_crossfade_dur');
-      if (saved) return parseFloat(saved);
-    } catch (e) {}
-    return 0.35;
-  });
-
-  // 3D Model Customization (Scale, Offsets, Materials)
   const [modelTransform, setModelTransform] = useState<ModelTransformConfig>(() => {
     try {
       const saved = localStorage.getItem('andyvr_model_transform');
@@ -122,7 +79,6 @@ export default function App() {
     };
   });
 
-  // Performance Profile
   const [performanceProfile, setPerformanceProfile] = useState<PerformanceProfileConfig>(() => {
     try {
       const saved = localStorage.getItem('andyvr_perf_profile');
@@ -138,7 +94,6 @@ export default function App() {
     };
   });
 
-  // Hardware Config & Barge-In
   const [hardwareConfig, setHardwareConfig] = useState<HardwareConfig>(() => {
     try {
       const saved = localStorage.getItem('andyvr_hw_config');
@@ -153,7 +108,6 @@ export default function App() {
     };
   });
 
-  // Background Image or Pure Black (#000000)
   const [customBackground, setCustomBackground] = useState<string | null>(() => {
     try {
       return localStorage.getItem('andyvr_custom_bg');
@@ -173,16 +127,13 @@ export default function App() {
     } catch (e) {}
   };
 
-  // Audio / Voice TTS state
   const [ttsEnabled, setTtsEnabled] = useState<boolean>(true);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Collapsible Configuration Drawer states
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [drawerTab, setDrawerTab] = useState<DrawerTabType>('animation_studio');
+  const [drawerTab, setDrawerTab] = useState<DrawerTabType>('model3d');
 
-  // AI Provider configuration (Cloud Gemini vs Local LM Studio / Ollama / Custom API Endpoint)
-  const [aiProviderConfig, setAiProviderConfig] = useState<AIProviderConfig>(() => {
+  const [aiProviderConfig, setAiProviderConfig] = useState<any>(() => {
     try {
       const saved = localStorage.getItem('andyvr_ai_provider_config');
       if (saved) return JSON.parse(saved);
@@ -195,7 +146,6 @@ export default function App() {
     };
   });
 
-  // Network offline detector
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
 
   useEffect(() => {
@@ -209,7 +159,6 @@ export default function App() {
     };
   }, []);
 
-  // Responsive mobile framing listener
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768 && cameraPreset === 'bust') {
@@ -220,7 +169,6 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, [cameraPreset]);
 
-  // When changing character
   const handleSelectCharacter = (newChar: CharacterProfile) => {
     let charToUse = newChar;
     try {
@@ -232,7 +180,6 @@ export default function App() {
 
     setCharacter(charToUse);
 
-    // Load character's saved customization
     try {
       const saved = localStorage.getItem(`cometa_custom_${newChar.id}`);
       if (saved) {
@@ -247,14 +194,12 @@ export default function App() {
     setMessages(MemoryManager.getChatHistory(newChar.id));
     setMemories(MemoryManager.getMemories(newChar.id));
     setIntimacyLevel(MemoryManager.getIntimacy(newChar.id));
-    setActiveAnimation('idle');
+    setIsSpeaking(false);
     setCustomModelFile(null);
     setCustomModelInfo(null);
-    setRecognizedAnimations([]);
     setDetectedMorphs([]);
   };
 
-  // Save customization changes
   const handleCustomizationChange = (updated: CustomizationSettings) => {
     setCustomization(updated);
     try {
@@ -262,7 +207,6 @@ export default function App() {
     } catch (e) {}
   };
 
-  // Save character profile / story / role edits
   const handleUpdateCharacterProfile = (updatedLore: Partial<CharacterProfile>) => {
     setCharacter((prev) => {
       const updated = { ...prev, ...updatedLore };
@@ -273,39 +217,13 @@ export default function App() {
     });
   };
 
-  // Save AI Provider configuration changes
-  const handleAIProviderConfigChange = (updated: AIProviderConfig) => {
+  const handleAIProviderConfigChange = (updated: any) => {
     setAiProviderConfig(updated);
     try {
       localStorage.setItem('andyvr_ai_provider_config', JSON.stringify(updated));
     } catch (e) {}
   };
 
-  // Animation Slot Mapping updater
-  const handleUpdateSlotMapping = (mapping: AnimationSlotMapping) => {
-    setAnimationSlotMapping(mapping);
-    try {
-      localStorage.setItem('andyvr_slot_mapping', JSON.stringify(mapping));
-    } catch (e) {}
-  };
-
-  // Playback Speed updater
-  const handleChangePlaybackSpeed = (speed: number) => {
-    setPlaybackSpeed(speed);
-    try {
-      localStorage.setItem('andyvr_anim_speed', speed.toString());
-    } catch (e) {}
-  };
-
-  // Crossfade Duration updater
-  const handleChangeCrossFadeDuration = (duration: number) => {
-    setCrossFadeDuration(duration);
-    try {
-      localStorage.setItem('andyvr_crossfade_dur', duration.toString());
-    } catch (e) {}
-  };
-
-  // Model Transform updater
   const handleModelTransformChange = (updated: ModelTransformConfig) => {
     setModelTransform(updated);
     try {
@@ -313,19 +231,6 @@ export default function App() {
     } catch (e) {}
   };
 
-  // Morph Target slider handler
-  const handleMorphTargetChange = (id: string, weight: number) => {
-    setDetectedMorphs((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, weight } : m))
-    );
-  };
-
-  // Reset Morphs handler
-  const handleResetMorphs = () => {
-    setDetectedMorphs((prev) => prev.map((m) => ({ ...m, weight: 0 })));
-  };
-
-  // Performance Profile updater
   const handlePerformanceProfileChange = (updated: PerformanceProfileConfig) => {
     setPerformanceProfile(updated);
     try {
@@ -333,7 +238,6 @@ export default function App() {
     } catch (e) {}
   };
 
-  // Hardware Config updater
   const handleHardwareConfigChange = (updated: HardwareConfig) => {
     setHardwareConfig(updated);
     try {
@@ -341,13 +245,6 @@ export default function App() {
     } catch (e) {}
   };
 
-  // Open drawer helper
-  const handleOpenDrawer = (tab: DrawerTabType) => {
-    setDrawerTab(tab);
-    setIsDrawerOpen(true);
-  };
-
-  // Instant Barge-In Speech Cancellation (Grok Ani feature)
   const stopSpeechAndBargeIn = () => {
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
@@ -358,14 +255,11 @@ export default function App() {
       window.speechSynthesis.cancel();
     }
     setIsSpeaking(false);
-    setActiveAnimation('idle');
   };
 
-  // Play spoken reply and synchronize jaw lip sync flutter
   const playSpokenReply = async (text: string) => {
     if (!ttsEnabled) return;
 
-    // Cut previous audio if any
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
       currentAudioRef.current = null;
@@ -373,7 +267,6 @@ export default function App() {
 
     setIsSpeaking(true);
 
-    // Try server Gemini TTS first
     const audioUrl = await ApiClient.generateTTS(text, character.voiceName);
     if (audioUrl) {
       const audio = new Audio(audioUrl);
@@ -408,7 +301,6 @@ export default function App() {
         );
       });
     } else {
-      // Use Web Speech API
       ApiClient.playWebSpeech(
         text,
         character.gender,
@@ -421,9 +313,7 @@ export default function App() {
     }
   };
 
-  // Send message handler with active AI Provider
   const handleSendMessage = async (text: string, imageBase64?: string) => {
-    // If avatar was talking, interrupt immediately (Barge-In)
     if (isSpeaking && hardwareConfig.autoBargeIn) {
       stopSpeechAndBargeIn();
     }
@@ -440,8 +330,6 @@ export default function App() {
     setMessages(newHistory);
     MemoryManager.saveChatHistory(character.id, newHistory);
 
-    // Set interactive listening reaction animation
-    setActiveAnimation('whisper');
     setIsThinking(true);
 
     try {
@@ -460,28 +348,22 @@ export default function App() {
       }
 
       setIsThinking(false);
-
-      // Update 3D avatar animation & emotion state
-      setActiveAnimation(result.animation);
       setActiveEmotion(result.emotion);
 
-      // Add to intimacy level
       const updatedIntimacy = MemoryManager.addIntimacy(character.id, result.intimacyDelta || 2);
       setIntimacyLevel(updatedIntimacy);
 
-      // Save new learned memory if extracted
       if (result.newMemory) {
         MemoryManager.addMemory(character.id, result.newMemory, 'preference', 4);
         setMemories(MemoryManager.getMemories(character.id));
       }
 
-      // Append character response message
       const charMsg: ChatMessage = {
         id: `msg_${Date.now()}_c`,
         sender: 'model',
         text: result.reply,
         timestamp: Date.now(),
-        animation: result.animation,
+        animation: undefined as any,
         emotion: result.emotion,
       };
 
@@ -489,13 +371,7 @@ export default function App() {
       setMessages(finalHistory);
       MemoryManager.saveChatHistory(character.id, finalHistory);
 
-      // Trigger spoken voice reply
       playSpokenReply(result.reply);
-
-      // Return to sensual sway or idle after 6 seconds
-      setTimeout(() => {
-        setActiveAnimation((prev) => (prev === result.animation ? 'idle' : prev));
-      }, 6500);
     } catch (err) {
       console.error('Error handling chat exchange:', err);
       setIsThinking(false);
@@ -514,42 +390,28 @@ export default function App() {
         backgroundRepeat: 'no-repeat',
       }}
     >
-      {/* 3D Scene Viewport (100% full-bleed per Three.js guidelines) */}
       <Character3DScene
         customization={customization}
         gender={character.gender}
-        activeAnimation={activeAnimation}
-        activeEmotion={activeEmotion}
         isSpeaking={isSpeaking}
         cameraPreset={cameraPreset}
         customModelFile={customModelFile}
         modelTransform={modelTransform}
         morphTargetsList={detectedMorphs}
-        animationSlotMapping={animationSlotMapping}
-        playbackSpeed={playbackSpeed}
-        crossFadeDuration={crossFadeDuration}
         performanceProfile={performanceProfile}
         onModelLoaded={(info) => {
           setCustomModelInfo({ name: info.name, animations: info.animations });
-          if (info.recognizedAnimations) {
-            setRecognizedAnimations(info.recognizedAnimations);
-            const autoSlots = AnimationClassifier.autoMapSlots(info.recognizedAnimations);
-            handleUpdateSlotMapping(autoSlots);
-          }
           if (info.morphs) {
             setDetectedMorphs(info.morphs);
           }
         }}
         onMorphsDetected={(morphs) => setDetectedMorphs(morphs)}
-        onAnimationChanged={(anim) => setActiveAnimation(anim)}
       />
 
-      {/* PWA Install Button floating in corner */}
       <div className="absolute top-4 right-4 z-30 pointer-events-auto">
         <PWAInstallButton />
       </div>
 
-      {/* Offline Notification Indicator */}
       {!isOnline && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/90 text-slate-950 font-semibold text-xs shadow-lg">
           <WifiOff className="w-3.5 h-3.5" />
@@ -557,25 +419,21 @@ export default function App() {
         </div>
       )}
 
-      {/* HUD & Chat Overlay with Grok Ani Conversational Dynamic State */}
       <ChatOverlay
         character={character}
         characters={CHARACTERS}
         messages={messages}
         intimacyLevel={intimacyLevel}
-        activeAnimation={activeAnimation}
         activeEmotion={activeEmotion}
         isSpeaking={isSpeaking}
         isThinking={isThinking}
         cameraPreset={cameraPreset}
-        loadedAnimations={customModelInfo?.animations}
         onSendMessage={handleSendMessage}
-        onAnimationTrigger={(anim) => setActiveAnimation(anim)}
         onCameraChange={(preset) => setCameraPreset(preset)}
-        onOpenCustomizer={() => handleOpenDrawer('customizer')}
-        onOpenMemory={() => handleOpenDrawer('memory')}
-        onOpenModelImporter={() => handleOpenDrawer('model3d')}
-        onOpenDrawer={handleOpenDrawer}
+        onOpenCustomizer={() => { setDrawerTab('customizer'); setIsDrawerOpen(true); }}
+        onOpenMemory={() => { setDrawerTab('memory'); setIsDrawerOpen(true); }}
+        onOpenModelImporter={() => { setDrawerTab('model3d'); setIsDrawerOpen(true); }}
+        onOpenDrawer={(tab) => { setDrawerTab(tab); setIsDrawerOpen(true); }}
         onSelectCharacter={handleSelectCharacter}
         ttsEnabled={ttsEnabled}
         onToggleTTS={() => setTtsEnabled(!ttsEnabled)}
@@ -584,7 +442,6 @@ export default function App() {
         onSetBackground={handleSetBackground}
       />
 
-      {/* Sidebar Left Desplegable with Full Studio, Model Customizer & Slots */}
       <ConfigurationDrawer
         isOpen={isDrawerOpen}
         initialTab={drawerTab}
@@ -596,24 +453,12 @@ export default function App() {
         cameraPreset={cameraPreset}
         aiProviderConfig={aiProviderConfig}
         currentModelName={customModelInfo?.name}
-        loadedAnimations={customModelInfo?.animations}
-        recognizedAnimations={recognizedAnimations}
-        animationSlotMapping={animationSlotMapping}
-        playbackSpeed={playbackSpeed}
-        crossFadeDuration={crossFadeDuration}
-        activeAnimation={activeAnimation}
-        isSpeaking={isSpeaking}
         modelTransform={modelTransform}
         morphTargetsList={detectedMorphs}
         performanceProfile={performanceProfile}
         hardwareConfig={hardwareConfig}
-        onTriggerAnimation={(anim) => setActiveAnimation(anim)}
-        onUpdateSlotMapping={handleUpdateSlotMapping}
-        onChangePlaybackSpeed={handleChangePlaybackSpeed}
-        onChangeCrossFadeDuration={handleChangeCrossFadeDuration}
         onModelTransformChange={handleModelTransformChange}
-        onMorphTargetChange={handleMorphTargetChange}
-        onResetMorphs={handleResetMorphs}
+        onResetMorphs={() => setDetectedMorphs([])}
         onPerformanceProfileChange={handlePerformanceProfileChange}
         onHardwareConfigChange={handleHardwareConfigChange}
         onClose={() => setIsDrawerOpen(false)}
@@ -631,7 +476,6 @@ export default function App() {
         onResetToProcedural={() => {
           setCustomModelFile(null);
           setCustomModelInfo(null);
-          setRecognizedAnimations([]);
           setDetectedMorphs([]);
         }}
       />
