@@ -93,8 +93,7 @@ export class MemoryManager {
     importance: number = 3
   ): MemoryItem {
     const memories = this.getMemories(characterId);
-    
-    // Avoid duplicate memories with identical text
+
     const exists = memories.some(
       (m) => m.content.toLowerCase().trim() === content.toLowerCase().trim()
     );
@@ -137,7 +136,38 @@ export class MemoryManager {
     return [];
   }
 
-  // Intimacy Level methods
+  static compactMemoryBank(memories: MemoryItem[], limit = 6, maxChars = 1200): MemoryItem[] {
+    const sorted = [...memories]
+      .sort((a, b) => {
+        const diff = (b.importance || 0) - (a.importance || 0);
+        if (diff !== 0) return diff;
+        return (b.timestamp || 0) - (a.timestamp || 0);
+      })
+      .slice(0, limit);
+
+    let totalChars = 0;
+    const compact: MemoryItem[] = [];
+    for (const entry of sorted) {
+      if (totalChars + entry.content.length > maxChars) break;
+      compact.push(entry);
+      totalChars += entry.content.length;
+    }
+    return compact;
+  }
+
+  static summarizeForPrompt(
+    memories: MemoryItem[],
+    limit = 6,
+    maxChars = 1200
+  ): string {
+    const relevant = this.compactMemoryBank(memories, limit, maxChars);
+    if (relevant.length === 0) return 'No hay recuerdos relevantes en este momento.';
+
+    return relevant
+      .map((m) => `- [${m.category}] ${m.content}`)
+      .join('\n');
+  }
+
   static getIntimacy(characterId: string): number {
     try {
       const val = localStorage.getItem(`${INTIMACY_STORAGE_PREFIX}${characterId}`);
@@ -147,7 +177,7 @@ export class MemoryManager {
     } catch (e) {
       console.warn('Error reading intimacy:', e);
     }
-    return 35; // default initial bond
+    return 35;
   }
 
   static setIntimacy(characterId: string, level: number) {
@@ -201,7 +231,6 @@ export class MemoryManager {
     };
   }
 
-  // Chat message persistence
   static getChatHistory(characterId: string): ChatMessage[] {
     try {
       const data = localStorage.getItem(`${CHAT_STORAGE_PREFIX}${characterId}`);
@@ -226,7 +255,6 @@ export class MemoryManager {
     localStorage.removeItem(`${CHAT_STORAGE_PREFIX}${characterId}`);
   }
 
-  // Export / Import
   static exportData(characterId: string) {
     const data = {
       characterId,
