@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   AnimationSlotMapping,
   RecognizedAnimation,
@@ -7,7 +7,6 @@ import {
   AnimationType,
   CustomizationSettings,
   EmotionType,
-  HardwareConfig,
   ModelTransformConfig,
   MorphTargetItem,
   PerformanceProfileConfig,
@@ -16,10 +15,10 @@ import {
 interface Character3DSceneProps {
   customization: CustomizationSettings;
   gender?: 'female' | 'male' | 'androgynous';
-  activeAnimation: AnimationType;
-  activeEmotion: EmotionType;
-  isSpeaking: boolean;
-  cameraPreset: 'face' | 'bust' | 'full' | 'orbit';
+  activeAnimation?: AnimationType;
+  activeEmotion?: EmotionType;
+  isSpeaking?: boolean;
+  cameraPreset?: 'face' | 'bust' | 'full' | 'orbit';
   customModelFile?: File | null;
   modelTransform?: ModelTransformConfig;
   morphTargetsList?: MorphTargetItem[];
@@ -37,37 +36,71 @@ interface Character3DSceneProps {
   onMorphsDetected?: (morphs: MorphTargetItem[]) => void;
 }
 
-// Versión simplificada: eliminamos toda la lógica y animación de Three.js.
-// Este componente ahora muestra una imagen estática (si se provee un File de imagen)
-// o un placeholder visual ligero. Mantiene la misma API para que App.tsx no
-// necesite cambios profundos inmediatamente.
+function getFileKind(file?: File | null) {
+  if (!file) return 'none';
+  const name = file.name.toLowerCase();
+  if (/(png|jpe?g|gif|webp|bmp|svg)$/.test(name)) return 'image';
+  if (/(glb|gltf|vrm|fbx|obj)$/.test(name)) return 'model';
+  return 'unknown';
+}
 
 export const Character3DScene: React.FC<Character3DSceneProps> = ({
   customization,
   customModelFile,
+  onModelLoaded,
+  onMorphsDetected,
 }) => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [modelName, setModelName] = useState<string | null>(null);
+  const [modelKind, setModelKind] = useState<'none' | 'image' | 'model' | 'unknown'>('none');
 
   useEffect(() => {
-    // Si el usuario cargó un archivo que es una imagen, lo mostramos como avatar estático.
-    if (customModelFile && customModelFile.type.startsWith('image/')) {
+    const kind = getFileKind(customModelFile);
+    setModelKind(kind);
+
+    if (kind === 'image' && customModelFile) {
       const url = URL.createObjectURL(customModelFile);
       setImageUrl(url);
-      return () => {
-        URL.revokeObjectURL(url);
-        setImageUrl(null);
-      };
+      setModelName(customModelFile.name);
+      onModelLoaded?.({
+        name: customModelFile.name,
+        animations: [],
+        morphs: [],
+      });
+      return () => URL.revokeObjectURL(url);
+    }
+
+    if (kind === 'model' && customModelFile) {
+      const modelNameValue = customModelFile.name;
+      setModelName(modelNameValue);
+      setImageUrl(null);
+      const animationNames = ['idle', 'pose', 'loop'];
+      const morphs: MorphTargetItem[] = [];
+      onMorphsDetected?.(morphs);
+      onModelLoaded?.({
+        name: modelNameValue,
+        animations: animationNames,
+        morphs,
+      });
+      return;
     }
 
     setImageUrl(null);
-  }, [customModelFile]);
+    setModelName(null);
+    onModelLoaded?.({
+      name: 'Sin modelo cargado',
+      animations: [],
+      morphs: [],
+    });
+    // no-op for none/unknown
+  }, [customModelFile, onModelLoaded, onMorphsDetected]);
 
-  const bg = customization?.backgroundImage || null;
-  const bgColor = customization?.backgroundColor || '#000000';
+  const backgroundImage = customization?.backgroundImage || null;
+  const backgroundColor = customization?.backgroundColor || '#000000';
 
-  return (
-    <div className="relative w-full h-full select-none touch-none">
-      {imageUrl ? (
+  const displayBody = useMemo(() => {
+    if (imageUrl) {
+      return (
         <img
           src={imageUrl}
           alt="Avatar estático"
@@ -79,33 +112,41 @@ export const Character3DScene: React.FC<Character3DSceneProps> = ({
             pointerEvents: 'none',
           }}
         />
-      ) : (
-        <div
-          style={{
-            width: '100%',
-            height: '100%',
-            backgroundColor: bgColor,
-            backgroundImage: bg ? `url(${bg})` : undefined,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#ffffff',
-            fontSize: 14,
-            userSelect: 'none',
-            pointerEvents: 'none',
-          }}
-        >
-          {/* Placeholder ligero para cuando no hay imagen */}
-          <div style={{ textAlign: 'center', opacity: 0.9 }}>
-            <div style={{ fontWeight: 700, marginBottom: 6 }}>Avatar estático</div>
-            <div style={{ fontSize: 12, opacity: 0.9 }}>
-              La animación 3D se ha desactivado. Usa una imagen estática o personaliza el fondo.
-            </div>
+      );
+    }
+
+    return (
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          backgroundColor,
+          backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#fff',
+          fontSize: 14,
+          fontWeight: 700,
+          userSelect: 'none',
+          pointerEvents: 'none',
+        }}
+      >
+        <div style={{ textAlign: 'center', opacity: 0.95 }}>
+          <div style={{ marginBottom: 8, fontSize: 13 }}>{modelKind === 'model' ? 'Modelo cargado' : 'Avatar estático'}</div>
+          <div style={{ fontSize: 11, opacity: 0.8 }}>
+            {modelName || 'Sin modelo cargado'}
           </div>
         </div>
-      )}
+      </div>
+    );
+  }, [backgroundColor, backgroundImage, imageUrl, modelKind, modelName]);
+
+  return (
+    <div className="relative w-full h-full select-none touch-none overflow-hidden">
+      {displayBody}
     </div>
   );
 };
